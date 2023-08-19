@@ -1,0 +1,8 @@
+/rootfs/
+/rootfs.sfs
+/initrd.img
+/busybox
+*.iso
+*.img
+/live-tree/
+/initrd-tree/

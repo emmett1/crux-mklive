@@ -1,0 +1,9 @@
+xterm &
+feh --bg-fill --randomize ~/Pictures/* &
+picom -c -r 7 &
+tint2 &
+xdg-user-dirs-update &
+/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
+nm-applet &
+clipit &
+volumeicon &

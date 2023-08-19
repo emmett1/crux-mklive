@@ -1,0 +1,48 @@
+# crux-mklive
+live iso maker for CRUX
+
+Like the title said, this scripts make custom live iso for CRUX GNU/Linux (should works in any distros actually, but this
+one focussed on CRUX only) using busybox based initramfs, squashed rootfs and etc.
+
+This script might need more touch. This is all for now, i just throw it in here in case anybody wanna try it.
+
+Host requirements:
+- syslinux - need isohybrid
+- grub - for setup UEFI stuffs
+- squashfs-tools - for squshing rootfs
+- curl - for fetch busybox
+- imagemagick - to create custom splash image (optional)
+- cdrkit - need genisoimage to create the iso
+- pkg-get - to prepare custom CRUX rootfs (optional if you can do other way, like using prt-get)
+- qemu - for testing the iso (optional)
+
+Target live rootfs requirements:
+- kernel - to boot the live iso (recommended generic one, so support more hardware)
+- grub-efi - to boot in UEFI mode
+- squashfs-tools - to install into disk (optional if you not planning to install into disk)
+- chpasswd - to change live password (its part of 'shadow' package but CRUX remove it by default, you can get from my repo)
+
+some required package might not in official crux repos, but you can get from my repo:
+https://github.com/emmett1/cruxports
+
+So how to do it?
+
+Basically just run 'sudo ./prepare-rootfs.sh' then 'sudo ./mklive.sh'.
+
+But in details;
+- first you need to setup 'pkg-get', i'm not gonna teach you that.
+- you might want to modify 'package.*' files to include into your live iso. 'packages.opt', 'packages.xorg' is taken from
+  official crux iso. 'package.custom' is for custom packages. Note: read 'prepare-rootfs.sh' script. modify rootfs less as
+  possible, because any modification should made in 'live-script.sh' script and 'liverootfs' directory.
+- modify 'files/live-script.sh' script if needed. this script is executed while inside initramfs before live rootfs boots.
+  so any command here only happen on live environment, like creating live user, setup hostname, locale and etc.
+- add any customization in 'liverootfs' directory. all files in this directory is copy over while inside initramfs before
+  live rootfs boots. btw, any files need to places in home directory, place it in 'liverootfs/etc/skel'.
+- run 'mklive.sh' script as root to build the iso.
+- use './qemu.sh <your iso>' to test the iso.
+
+NOTE:
+- you might want to remove rootfs.sfs & initrd.img file before re-run the 'mklive.sh' script if you modify the rootfs.
+- the iso might not work with ventoy, you can use 'cat isofile > /dev/sdX && sync' or dd.
+
+thats all to create custom CRUX live iso.

@@ -1,0 +1,39 @@
+# one of generic kernel is required
+#linux
+#linux-lts
+#linux-sifuh
+linux-slack
+
+# chpasswd required to change live password when booting the iso
+chpasswd
+
+# required to extract rootfs into disk
+squashfs-tools
+
+# my customs packages
+tint2
+obmenu-generator
+gmrun
+liberation-fonts
+neofetch
+dfc
+pcmanfm
+lxmenu-data
+gvfs
+paper-icon-theme
+network-manager-applet
+lxappearance-obconf
+leafpad
+geany
+arc-gtk-theme
+arcbox
+slim
+xdg-utils
+xdg-user-dirs
+picom
+feh
+volumeicon
+clipit
+viewnior
+polkit-gnome
+firefox

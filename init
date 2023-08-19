@@ -1,0 +1,117 @@
+#!/bin/busybox sh
+
+NEWROOT=/.newroot
+INITRAMFS=/run/initramfs
+MEDIA=$INITRAMFS/media
+LOWER=$INITRAMFS/lower
+UPPER=$INITRAMFS/upper
+WORK=$INITRAMFS/work
+SFSIMAGE=$MEDIA/boot/rootfs.sfs
+
+/bin/busybox --install -s /bin
+
+mkdir -p /proc /sys /run /dev
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t tmpfs run /run
+mount -t devtmpfs dev /dev
+
+read -r cmdline < /proc/cmdline
+
+for cmd in $cmdline; do
+	case $cmd in
+		shell) SHELL=1;;
+		ram) RAM=1;;
+	esac
+done
+
+mkdir -p $LOWER $MEDIA $UPPER $WORK $NEWROOT
+
+exec >/dev/console </dev/console 2>&1
+
+PRINTK="`cat /proc/sys/kernel/printk`"
+echo "0" > /proc/sys/kernel/printk
+
+# load all kernel modules
+depmod
+find /lib/modules/$(uname -r)/ -type f -name '*.ko*' \
+| rev | awk -F / '{print $1}' | rev | awk -F \. '{print $1}' \
+| xargs modprobe -b -a 2>/dev/null
+
+# run mdev
+mdev -s
+echo "/bin/mdev" > /proc/sys/kernel/hotplug
+
+if [ "$SHELL" ]; then
+	echo "shell requested"
+	echo "exit to continue booting"
+	sh
+fi
+
+# figure out media
+# cdrom drive
+modprobe loop
+if [ -f /proc/sys/dev/cdrom/info ]; then
+	CDROM=$(grep name /proc/sys/dev/cdrom/info | awk -F : '{print $2}' | awk '{print $1}')
+fi
+BLOCK=$(grep -E '[vsh]d' /proc/partitions | awk '{print $4}')
+for i in $CDROM $BLOCK; do
+	mount -r /dev/$i $MEDIA
+	if [ $? = 0 ] ;then
+		if [ -f $MEDIA/livemedia ]; then
+			MEDIAFOUND=1
+			break
+		else
+			umount $MEDIA
+		fi
+	fi
+done
+
+if [ ! "$MEDIAFOUND" ]; then
+	echo "Media not found"
+	sh
+	echo "Cannot go further"
+	sleep 99999
+	exit 1
+fi
+
+if [ "$RAM" ]; then
+	echo "Boot in ram requested"
+	mkdir -p $INITRAMFS/ram
+	mount -t tmpfs -o "size=75%",mode=0755 ram $INITRAMFS/ram
+	cp -r $MEDIA/* $INITRAMFS/ram/
+	SFSIMAGE=$INITRAMFS/ram/boot/rootfs.sfs
+fi
+
+# mount stuffs
+loopdevice=$(losetup -f)
+losetup -f $SFSIMAGE
+mount -r $loopdevice $LOWER
+mount -t overlay overlay -o lowerdir=$LOWER,upperdir=$UPPER,workdir=$WORK $NEWROOT
+
+# copy over any customization into $NEWROOT
+if [ -d $MEDIA/rootfs ]; then
+	cp -ra $MEDIA/rootfs/* $NEWROOT
+fi
+
+if [ "$RAM" ]; then
+	umount $MEDIA
+fi
+
+mount --move /sys $NEWROOT/sys
+mount --move /proc $NEWROOT/proc
+mount --move /dev $NEWROOT/dev
+mount --move /run $NEWROOT/run
+
+# execute live script if exist
+if [ -f $NEWROOT/root/live_script.sh ]; then
+	chroot $NEWROOT sh /root/live_script.sh
+fi
+
+# switch to newroot
+clear
+exec /bin/switch_root $NEWROOT /sbin/init
+
+echo "This is the end of initramfs"
+echo "Nothing further, here's the shell"
+/bin/busybox sh
